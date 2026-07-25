@@ -35,5 +35,8 @@
     <ClInclude Include="cameraClass.h">
       <Filter>Archivos de origen</Filter>
     </ClInclude>
+    <ClInclude Include="material.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

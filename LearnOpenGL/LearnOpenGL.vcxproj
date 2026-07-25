@@ -138,6 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cameraClass.h" />
+    <ClInclude Include="material.h" />
     <ClInclude Include="shaderClass.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="textureClass.h" />
