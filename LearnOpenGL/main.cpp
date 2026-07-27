@@ -1,6 +1,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+
 #include "shaderClass.h"
 #include "cameraClass.h"
 
@@ -8,8 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "model.h"
 
 // function declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -257,6 +260,8 @@ int main()
         return -1;
     }
 
+    stbi_set_flip_vertically_on_load(true);
+
     glEnable(GL_DEPTH_TEST);
     
 #pragma endregion
@@ -265,47 +270,25 @@ int main()
     Shader shaderCube("shaders/vShader.vs", "shaders/fShader.fs");
 	Shader shaderLight("shaders/vShaderLight.vs", "shaders/fShaderLight.fs");
 
-	unsigned int VAOCube, VAOLight, VBO;
-	int batches[] = { 3, 3, 2 };
-    int batchesLight[] = { 3, -5};
-    setUpVBO(&VBO, verticesCubeNormalsTexture, sizeof(verticesCubeNormalsTexture));
-	setUpVAO(&VAOCube, batches, sizeof(batches) / sizeof(batches[0]));
+    unsigned int VAOLight, VBO;
+    int batches[] = { 3 };
+    int batchesLight[] = { 3 };
+    setUpVBO(&VBO, verticesCube, sizeof(verticesCube));
     setUpVAO(&VAOLight, batchesLight, sizeof(batchesLight) / sizeof(batchesLight[0]));
+
+    Model ourModel("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/models/backpack/backpack.obj");
 #pragma endregion
 
 #pragma region Load, create and set texture 
-    // -------------------------
-    //unsigned int texture1 = createTexture("textures/container.jpg"), texture2 = createTexture("textures/awesomeface.png");
-	unsigned int textureBox = createTexture("textures/container2.png"), textureBoxSpecular = createTexture("textures/container2_specular.png");
 
-    // tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
-    // -------------------------------------------------------------------------------------------
-    shaderCube.use();
-    shaderCube.setInt("material.diffuse", 0);
-    shaderCube.setInt("material.specular", 1);
-    //shaderCube.setInt("texture1", 0);
-    //shaderCube.setInt("texture2", 1);
 #pragma endregion
 
 #pragma region Matrices construction
     
     
-    
 #pragma endregion
 
 #pragma region Other elements
-    glm::vec3 cubePositions[] = {
-        glm::vec3(0.0f,  0.0f,  0.0f),
-        glm::vec3(2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f,  2.0f, -2.5f),
-        glm::vec3(1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f)
-    };
 
     glm::vec3 pointLightPositions[] = {
         glm::vec3(0.7f,  0.2f,  2.0f),
@@ -331,19 +314,8 @@ int main()
 
         // render
         // ------
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // bind textures on corresponding texture units
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureBox);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, textureBoxSpecular);
-
-        // Variables that change over time
-
-        glm::vec3 lightPos = camera.cameraPos; //glm::vec3(3.0f*sin(glfwGetTime()), 1.0f, 3.0f*cos(glfwGetTime()));
-        glm::vec3 lightDir = camera.cameraDirection; // glm::vec3(-0.2f, -1.0f, -0.3f);
 
 
         // We paint the big Cube
@@ -353,9 +325,9 @@ int main()
         
             // We set the uniform variables
 
-                // Material
+        //        // Material
         shaderCube.setVec3("viewPos", camera.cameraPos);
-        shaderCube.setFloat("material.shininess", 32.0f);
+        shaderCube.setFloat("32", 32.0f);
 
                 // Lights
 
@@ -410,24 +382,17 @@ int main()
 		
 
 		        // Matrices
-		glm::mat4 view = camera.getLookAt();
-		glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
+        glm::mat4 view = camera.getLookAt();
+        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
+        shaderCube.setMat4("view", view);
+        shaderCube.setMat4("projection", projection);
 
-		shaderCube.setMat4("view", view);
-		shaderCube.setMat4("projection", projection);
-
-            // We activate the VAO
-		glBindVertexArray(VAOCube);
-		for (unsigned int i = 0; i < 10; i++)
-		{
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePositions[i]);
-			float angle = i%2 ? 20.0f * i : 20.0f * i + glfwGetTime() * 50.0f;
-			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-			shaderCube.setMat4("model", model);
-            shaderCube.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
+        shaderCube.setMat4("model", model);
+		shaderCube.setMat3("normalMatrix", glm::transpose(glm::inverse(model)));
+        ourModel.Draw(shaderCube);
 
         // also draw the lamp object(s)
         shaderLight.use();
@@ -456,7 +421,6 @@ int main()
 
 #pragma region de-allocate all resources
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAOCube);
     glDeleteVertexArrays(1, &VAOLight);
     glDeleteBuffers(1, &VBO);
     //glDeleteBuffers(1, &EBO);

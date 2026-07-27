@@ -38,5 +38,11 @@
     <ClInclude Include="material.h">
       <Filter>Archivos de origen</Filter>
     </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
