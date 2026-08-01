@@ -77,13 +77,23 @@ public:
 		cameraUp = glm::cross(cameraDirection, cameraRight);
 	}
 
+	void setCamaraDirection(glm::vec3 newCameraDirection) {
+		cameraDirection = glm::normalize(newCameraDirection);
+
+		cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+		cameraUp = glm::cross(cameraDirection, cameraRight);
+	}
+
 	void changeFOV(float offset) {
-		FOV -= offset;
+		setFOV(FOV - offset);
+	}	
+
+	void setFOV(float newFOV) {
+		FOV = newFOV;
 		if (FOV < 1.0f)
 			FOV = 1.0f;
 		if (FOV > 120.0f)
 			FOV = 120.0f;
-	}	
+	}
 
-private:
 };

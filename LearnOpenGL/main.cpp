@@ -21,6 +21,19 @@ unsigned int createTexture(const std::string path);
 void setUpVAO(unsigned int* VAO, int* batches, unsigned int numBatches);
 void setUpVBO(unsigned int* VBO, float* vertices, unsigned int sizeVertices);
 void setUpEBO(unsigned int* EBO, unsigned int* indices, unsigned int sizeIndices);
+void setUpFBOTexture(
+    unsigned int* FBO, unsigned int* texture,
+    unsigned int width, unsigned int height
+);
+void setUpRBO(
+    unsigned int* RBO,
+    unsigned int width, unsigned int height
+);
+void setUpFBOTextureAndRBO(
+    unsigned int* FBO, unsigned int* texture,
+    unsigned int* RBO,
+    unsigned int width, unsigned int height
+);
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -29,216 +42,30 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-float lastX = SCR_WIDTH/2 , lastY = SCR_HEIGHT/2;
+// camera
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = (float)SCR_WIDTH / 2.0;
+float lastY = (float)SCR_HEIGHT / 2.0;
 bool firstMouse = true;
 
-float mixValue = 0.2f;
-
+// timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-Camera camera;
-
-float vertices2D[] = {
-    // position         // color          //texture coords
-     0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,  // top right
-     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // bottom right
-    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // bottom left
-    -0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f   // top left 
-};
-unsigned int indices2D[] = {  // note that we start from 0!
-    0, 1, 3,   // first triangle
-    1, 2, 3    // second triangle
-};
-
-float verticesCubeTexture[] = {
-        // position           // texture coords
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-};
-
-float verticesCube[] = {
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-
-    -0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
-
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f, -0.5f,
-
-    -0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f
-};
-
-float verticesCubeNormals[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-};
-
-float verticesCubeNormalsTexture[] = {
-    // positions          // normals           // texture coords
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
-};
-
 int main()
 {
-#pragma region glfw: Initialize and configure
-    glfwInit();  // Initialize the GLFW library
+    // glfw: initialize and configure
+    // ------------------------------
+    glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); // Set the OpenGL version to 3.3 (3 MAJOR, 3 MINOR)
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Set the OpenGL profile to Core Profile
-#pragma endregion
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#pragma region glfw: Creation
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    // glfw window creation
     // --------------------
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
@@ -247,58 +74,140 @@ int main()
         glfwTerminate();
         return -1;
     }
-    glfwMakeContextCurrent(window); // Make the window's context current (so all changes to OpenGL state will affect this window)
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); // It says that whenever the window size changed (by OS or user resize) 
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
+    // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
 
-    stbi_set_flip_vertically_on_load(true);
-
+    // configure global opengl state
+    // -----------------------------
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS); 
+
     
-#pragma endregion
-     
-#pragma region glad: We create Shaders and we set up the vertices/edges (VAO, VBO / EBO)
-    Shader shaderCube("shaders/vShader.vs", "shaders/fShader.fs");
-	Shader shaderLight("shaders/vShaderLight.vs", "shaders/fShaderLight.fs");
 
-    unsigned int VAOLight, VBO;
-    int batches[] = { 3 };
-    int batchesLight[] = { 3 };
-    setUpVBO(&VBO, verticesCube, sizeof(verticesCube));
-    setUpVAO(&VAOLight, batchesLight, sizeof(batchesLight) / sizeof(batchesLight[0]));
+    // build and compile shaders
+    // -------------------------
+    Shader shader("resources/shaders/marble/vShaderMarble.vert", "resources/shaders/marble/fShaderMarble.frag");
+	Shader screenShader("resources/shaders/marble/vShaderMarble.vert", "resources/shaders/fbShader/fShaderFBO.frag");
 
-    Model ourModel("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/models/backpack/backpack.obj");
-#pragma endregion
-
-#pragma region Load, create and set texture 
-
-#pragma endregion
-
-#pragma region Matrices construction
-    
-    
-#pragma endregion
-
-#pragma region Other elements
-
-    glm::vec3 pointLightPositions[] = {
-        glm::vec3(0.7f,  0.2f,  2.0f),
-        glm::vec3(2.3f, -3.3f, -4.0f),
-        glm::vec3(-4.0f,  2.0f, -12.0f),
-        glm::vec3(0.0f,  0.0f, -3.0f)
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // ------------------------------------------------------------------
+    float cubeVertices[] = {
+        // Back face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // bottom-right         
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // bottom-left
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // top-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
+        // Left face
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-left
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
+        // Right face
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right         
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left     
+         // Bottom face
+         -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
+          0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // top-left
+          0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
+          0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
+         -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+         -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
+         // Top face
+         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+          0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+          0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right     
+          0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+         -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // bottom-left        
     };
-#pragma endregion
 
-#pragma region render loop
+    float planeVertices[] = {
+        // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+         5.0f, -0.5f, -5.0f,  2.0f, 2.0f
+    };
+
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
+         0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
+
+        -0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f, 0.0f,  1.0f, 1.0f
+    };
+
+    // cube VAO
+    unsigned int cubeVAO, cubeVBO;
+	int batches[] = {3, 2};
+	setUpVBO(&cubeVBO, cubeVertices, sizeof(cubeVertices));
+	setUpVAO(&cubeVAO, batches, sizeof(batches) / sizeof(batches[0]));
+    // plane VAO
+    unsigned int planeVAO, planeVBO;
+	setUpVBO(&planeVBO, planeVertices, sizeof(planeVertices));
+	setUpVAO(&planeVAO, batches, sizeof(batches) / sizeof(batches[0]));
+	
+    unsigned int quadVAO, quadVBO;
+    int batchesQuad[] = { 3, 2 };
+    setUpVBO(&quadVBO, quadVertices, sizeof(quadVertices));
+    setUpVAO(&quadVAO, batchesQuad, sizeof(batchesQuad) / sizeof(batchesQuad[0]));
+
+    // load textures
+    // -------------
+    unsigned int cubeTexture = createTexture("resources/textures/marble.jpg");
+    unsigned int floorTexture = createTexture("resources/textures/metal.png");
+
+    // shader configuration
+    // --------------------
+    shader.use();
+    shader.setInt("texture1", 0);
+
+    screenShader.use();
+    screenShader.setInt("screenTexture", 0);
+
+    // framebuffer configuration
+    // ----------------------------
+
+    unsigned int FBO, textureCB, RBO;
+    setUpFBOTextureAndRBO(&FBO, &textureCB, &RBO, SCR_WIDTH, SCR_HEIGHT);
+    glm::vec3 windowPosition = glm::vec3(0.0f, 1.0f, 3.0f);
+    Camera povWindow(windowPosition, windowPosition + camera.cameraDirection, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
@@ -314,101 +223,77 @@ int main()
 
         // render
         // ------
+
+        // bind to framebuffer and draw scene as we normally would to color texture 
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        glEnable(GL_DEPTH_TEST); // enable depth testing (is disabled for rendering screen-space quad)
+
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-        // We paint the big Cube
-
-            // We  activate the shader
-        shaderCube.use();
-        
-            // We set the uniform variables
-
-        //        // Material
-        shaderCube.setVec3("viewPos", camera.cameraPos);
-        shaderCube.setFloat("32", 32.0f);
-
-                // Lights
-
-        // directional light
-        shaderCube.setVec3("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
-        shaderCube.setVec3("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        shaderCube.setVec3("dirLight.diffuse", glm::vec3(0.4f, 0.4f, 0.4f));
-        shaderCube.setVec3("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-        // point light 1
-        shaderCube.setVec3("pointLights[0].position", pointLightPositions[0]);
-        shaderCube.setVec3("pointLights[0].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        shaderCube.setVec3("pointLights[0].diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
-        shaderCube.setVec3("pointLights[0].specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderCube.setFloat("pointLights[0].constant", 1.0f);
-        shaderCube.setFloat("pointLights[0].linear", 0.09f);
-        shaderCube.setFloat("pointLights[0].quadratic", 0.032f);
-        // point light 2
-        shaderCube.setVec3("pointLights[1].position", pointLightPositions[1]);
-        shaderCube.setVec3("pointLights[1].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        shaderCube.setVec3("pointLights[1].diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
-        shaderCube.setVec3("pointLights[1].specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderCube.setFloat("pointLights[1].constant", 1.0f);
-        shaderCube.setFloat("pointLights[1].linear", 0.09f);
-        shaderCube.setFloat("pointLights[1].quadratic", 0.032f);
-        // point light 3
-        shaderCube.setVec3("pointLights[2].position", pointLightPositions[2]);
-        shaderCube.setVec3("pointLights[2].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        shaderCube.setVec3("pointLights[2].diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
-        shaderCube.setVec3("pointLights[2].specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderCube.setFloat("pointLights[2].constant", 1.0f);
-        shaderCube.setFloat("pointLights[2].linear", 0.09f);
-        shaderCube.setFloat("pointLights[2].quadratic", 0.032f);
-        // point light 4
-        shaderCube.setVec3("pointLights[3].position", pointLightPositions[3]);
-        shaderCube.setVec3("pointLights[3].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        shaderCube.setVec3("pointLights[3].diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
-        shaderCube.setVec3("pointLights[3].specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderCube.setFloat("pointLights[3].constant", 1.0f);
-        shaderCube.setFloat("pointLights[3].linear", 0.09f);
-        shaderCube.setFloat("pointLights[3].quadratic", 0.032f);
-        // spotLight
-        shaderCube.setVec3("spotLight.position", camera.cameraPos);
-        shaderCube.setVec3("spotLight.direction", camera.cameraDirection);
-        shaderCube.setVec3("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
-        shaderCube.setVec3("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderCube.setVec3("spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderCube.setFloat("spotLight.constant", 1.0f);
-        shaderCube.setFloat("spotLight.linear", 0.09f);
-        shaderCube.setFloat("spotLight.quadratic", 0.032f);
-        shaderCube.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        shaderCube.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
-		
-
-		        // Matrices
-        glm::mat4 view = camera.getLookAt();
-        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
-        shaderCube.setMat4("view", view);
-        shaderCube.setMat4("projection", projection);
-
+        shader.use();
+        povWindow.setCamaraDirection(windowPosition - camera.cameraPos);
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-        shaderCube.setMat4("model", model);
-		shaderCube.setMat3("normalMatrix", glm::transpose(glm::inverse(model)));
-        ourModel.Draw(shaderCube);
+        glm::mat4 view = povWindow.getLookAt();
+        glm::mat4 projection = povWindow.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
+        shader.setMat4("view", view);
+        shader.setMat4("projection", projection);
+        // cubes
+        glBindVertexArray(cubeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, cubeTexture);
+        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // floor
+        glBindVertexArray(planeVAO);
+        glBindTexture(GL_TEXTURE_2D, floorTexture);
+        shader.setMat4("model", glm::mat4(1.0f));
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        // also draw the lamp object(s)
-        shaderLight.use();
-        shaderLight.setMat4("projection", projection);
-        shaderLight.setMat4("view", view);
+        // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        // we now draw as many light bulbs as we have point lights.
-        glBindVertexArray(VAOLight);
-        for (unsigned int i = 0; i < 4; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, pointLightPositions[i]);
-            model = glm::scale(model, glm::vec3(0.2f)); // Make it a smaller cube
-            shaderLight.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        // clear all relevant buffers
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader.use();
+        model = glm::mat4(1.0f);
+        view = camera.getLookAt();
+        projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
+        shader.setMat4("view", view);
+        shader.setMat4("projection", projection);
+        // cubes
+        glBindVertexArray(cubeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, cubeTexture);
+        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // floor
+        glBindVertexArray(planeVAO);
+        glBindTexture(GL_TEXTURE_2D, floorTexture);
+        shader.setMat4("model", glm::mat4(1.0f));
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        //window
+        screenShader.use();
+        screenShader.setMat4("view", view);
+        screenShader.setMat4("projection", projection);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, windowPosition);
+        shader.setMat4("model", model);
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, textureCB);	// use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -417,49 +302,53 @@ int main()
         glfwPollEvents();
     }
 
-#pragma endregion
-
-#pragma region de-allocate all resources
+    // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAOLight);
-    glDeleteBuffers(1, &VBO);
-    //glDeleteBuffers(1, &EBO);
-#pragma endregion
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteVertexArrays(1, &planeVAO);
+    glDeleteBuffers(1, &cubeVBO);
+    glDeleteBuffers(1, &planeVBO);
 
-#pragma region glfw: terminate, clear all previously GLFW resources.
-    // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
-#pragma endregion
 }
 
 unsigned int createTexture(const std::string path) {
 
     unsigned int texture;
-    // ---------
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load image, create texture and generate mipmaps
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
 
-    GLenum format = GL_RGB;
-    if (nrChannels == 1)
-        format = GL_RED;
-    else if (nrChannels == 3)
-        format = GL_RGB;
-    else if (nrChannels == 4)
-        format = GL_RGBA;
+    
 
     if (data)
     {
+        GLenum format = GL_RGB;
+        if (nrChannels == 1)
+            format = GL_RED;
+        else if (nrChannels == 3)
+            format = GL_RGB;
+        else if (nrChannels == 4)
+            format = GL_RGBA;
+
+        // ---------
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        if (format == GL_RGBA) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+        else {
+            // set the texture wrapping parameters
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        }
+        // set texture filtering parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // load image, create texture and generate mipmaps
+
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
@@ -486,28 +375,28 @@ void setUpVAO(
     }
 
     unsigned int sum = 0;
-	unsigned int batch_num = 0;
+    unsigned int batch_num = 0;
     for (unsigned int i = 0; i < numBatches; i++) {
-		if (batches[i] < 0) {
-			sum -= batches[i];
-		}
+        if (batches[i] < 0) {
+            sum -= batches[i];
+        }
         else {
             glVertexAttribPointer(batch_num, batches[i], GL_FLOAT, GL_FALSE, total_sum * sizeof(float), (void*)(sum * sizeof(float)));
             glEnableVertexAttribArray(batch_num);
             sum += batches[i];
             batch_num++;
         }
-        
+
     }
 }
 
 void setUpVBO(
-	unsigned int* VBO,
-	float* vertices, unsigned int sizeVertices
+    unsigned int* VBO,
+    float* vertices, unsigned int sizeVertices
 ) {
-	glGenBuffers(1, VBO);
-	glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeVertices, vertices, GL_STATIC_DRAW);
+    glGenBuffers(1, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeVertices, vertices, GL_STATIC_DRAW);
 }
 
 void setUpEBO(
@@ -517,6 +406,44 @@ void setUpEBO(
     glGenBuffers(1, EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeIndices, indices, GL_STATIC_DRAW);
+}
+
+void setUpFBOTexture(
+    unsigned int* FBO, unsigned int* texture,
+    unsigned int width, unsigned int height
+) {
+    glGenFramebuffers(1, FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
+
+    glGenTextures(1, texture);
+    glBindTexture(GL_TEXTURE_2D, *texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height , 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture, 0);
+}
+
+void setUpRBO(
+    unsigned int* RBO,
+    unsigned int width, unsigned int height
+) {
+    glGenRenderbuffers(1, RBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, *RBO);
+
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *RBO); // now actually attach it
+}
+
+void setUpFBOTextureAndRBO(
+    unsigned int* FBO, unsigned int* texture,
+    unsigned int* RBO,
+    unsigned int width, unsigned int height
+) {
+    setUpFBOTexture(FBO, texture, width, height);
+    setUpRBO(RBO, width, height);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -537,12 +464,12 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
-	camera.moveDirection(xoffset, yoffset);
+    camera.moveDirection(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	float sensitivity = 5.0f;
+    float sensitivity = 5.0f;
     camera.changeFOV(sensitivity * (float)yoffset);
 }
 
@@ -553,18 +480,18 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-	float cameraSpeed = 2.5f * deltaTime;
+    float cameraSpeed = 2.5f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-		camera.moveFrontBack(cameraSpeed);
+        camera.moveFrontBack(cameraSpeed);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-		camera.moveFrontBack(-cameraSpeed);
+        camera.moveFrontBack(-cameraSpeed);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-		camera.moveLeftRight(cameraSpeed);
+        camera.moveLeftRight(cameraSpeed);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
@@ -572,7 +499,7 @@ void processInput(GLFWwindow* window)
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     {
-		camera.moveUpDown(cameraSpeed);
+        camera.moveUpDown(cameraSpeed);
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
     {
