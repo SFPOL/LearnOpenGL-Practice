@@ -63,11 +63,11 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    /*glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);*/
 
     // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    /*glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);*/
 
     #pragma endregion
 
@@ -83,84 +83,37 @@ int main()
     #pragma region Configure global opengl state
 
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL); 
 
     #pragma endregion
 
     #pragma region Build and compile shaders
-    Shader shaderRed    ("resources/shaders/UBOSimple/vsUBO.vert", "resources/shaders/UBOSimple/fsUBORed.frag");
-    Shader shaderGreen  ("resources/shaders/UBOSimple/vsUBO.vert", "resources/shaders/UBOSimple/fsUBOGreen.frag");
-    Shader shaderBlue   ("resources/shaders/UBOSimple/vsUBO.vert", "resources/shaders/UBOSimple/fsUBOBlue.frag");
-    Shader shaderYellow ("resources/shaders/UBOSimple/vsUBO.vert", "resources/shaders/UBOSimple/fsUBOYellow.frag");
+    Shader shader("resources/shaders/geometry/vsGeom.vert", 
+                  "resources/shaders/geometry/fsGeom.frag", 
+                  "resources/shaders/geometry/gsGeom.geom");
 
     #pragma endregion
 
     #pragma region Vertex data
 
-    float cubeVertices[] = {
-        // positions         
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
+    float points[] = {
+		// positions  // colors
+        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, // top-left
+         0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // top-right
+         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // bottom-right
+        -0.5f, -0.5f, 1.0f, 1.0f, 0.0f  // bottom-left
     };
     #pragma endregion
 
     #pragma region Set up vertex data (and buffer(s)) and configure vertex attributes
 
     // cube VAO
-    unsigned int cubeVAO, cubeVBO;
-	setUpVBO(&cubeVBO, cubeVertices, sizeof(cubeVertices));
-	setUpVAO(&cubeVAO, std::vector<int>({3}));
+    unsigned int pointsVAO, pointsVBO;
+	setUpVBO(&pointsVBO, points, sizeof(points));
+	setUpVAO(&pointsVAO, std::vector<int>({2, 3}));
 
     #pragma endregion
 
     #pragma region Set up Uniform Buffer Object (UBO)
-
-    unsigned int uboMatrices;
-    glGenBuffers(1, &uboMatrices);
-    glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
-    glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    // define the range of the buffer that links to a uniform binding point
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uboMatrices, 0, 2 * sizeof(glm::mat4));
 
     #pragma endregion
 
@@ -172,55 +125,18 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
-        // per-frame time logic
-        // --------------------
-        float currentFrame = static_cast<float>(glfwGetTime());
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
-        processInput(window);
-
+        // render
+        // ------
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = camera.getLookAt();
-        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
-
-		// We write the view and projection matrices in the uniform buffer object
-        glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
-        glBufferSubData(GL_UNIFORM_BUFFER,                 0, sizeof(glm::mat4), glm::value_ptr(projection));
-        glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
-        glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-        // draw 4 cubes 
-        // RED
-        glBindVertexArray(cubeVAO);
-        shaderRed.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-0.75f, 0.75f, 0.0f)); // move top-left
-        shaderRed.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        // GREEN
-        shaderGreen.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.75f, 0.75f, 0.0f)); // move top-right
-        shaderGreen.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        // YELLOW
-        shaderYellow.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-0.75f, -0.75f, 0.0f)); // move bottom-left
-        shaderYellow.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        // BLUE
-        shaderBlue.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.75f, -0.75f, 0.0f)); // move bottom-right
-        shaderBlue.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // draw points
+        shader.use();
+        glBindVertexArray(pointsVAO);
+        glDrawArrays(GL_POINTS, 0, 4);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+        // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -228,8 +144,8 @@ int main()
     #pragma endregion
 
     #pragma region optional: de-allocate all resources 
-    glDeleteVertexArrays(1, &cubeVAO);
-    glDeleteBuffers(1, &cubeVBO);
+    glDeleteVertexArrays(1, &pointsVAO);
+    glDeleteBuffers(1, &pointsVBO);
 
     #pragma endregion
 
