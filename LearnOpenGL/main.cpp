@@ -63,11 +63,11 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    /*glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);*/
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     // tell GLFW to capture our mouse
-    /*glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);*/
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     #pragma endregion
 
@@ -87,53 +87,73 @@ int main()
     #pragma endregion
 
     #pragma region Build and compile shaders
-    Shader shader("resources/shaders/geometry/vsGeom.vert", 
-                  "resources/shaders/geometry/fsGeom.frag", 
-                  "resources/shaders/geometry/gsGeom.geom");
+    Shader shader("resources/shaders/simpleModel/vsSimple.vert", 
+                  "resources/shaders/simpleModel/fsSimple.frag");
+
+    Shader shaderNormals("resources/shaders/viewNormals/vsViewNorm.vert",
+                         "resources/shaders/viewNormals/fsViewNorm.frag",
+                         "resources/shaders/viewNormals/gsViewNorm.geom");
 
     #pragma endregion
 
-    #pragma region Vertex data
-
-    float points[] = {
-		// positions  // colors
-        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, // top-left
-         0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // top-right
-         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // bottom-right
-        -0.5f, -0.5f, 1.0f, 1.0f, 0.0f  // bottom-left
-    };
-    #pragma endregion
-
-    #pragma region Set up vertex data (and buffer(s)) and configure vertex attributes
-
-    // cube VAO
-    unsigned int pointsVAO, pointsVBO;
-	setUpVBO(&pointsVBO, points, sizeof(points));
-	setUpVAO(&pointsVAO, std::vector<int>({2, 3}));
+    #pragma region Vertex data and set up VAOs and VBOs
 
     #pragma endregion
+
+    # pragma Load models
+        
+    # pragma endregion
 
     #pragma region Set up Uniform Buffer Object (UBO)
 
     #pragma endregion
 
     #pragma region Load textures, set them up as uniforms
-
+    stbi_set_flip_vertically_on_load(true);
+    Model backpack("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/backpack/backpack.obj");
     #pragma endregion
     
     #pragma region render loop
 
     while (!glfwWindowShouldClose(window))
     {
+        // per-frame time logic
+        // --------------------
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        // input
+        // -----
+        processInput(window);
+
         // render
         // ------
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // draw points
+
+        // We first render the backpack
+        // configure transformation matrices
+		glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
+        glm::mat4 view = camera.getLookAt();
+        glm::mat4 model = glm::mat4(1.0f);
         shader.use();
-        glBindVertexArray(pointsVAO);
-        glDrawArrays(GL_POINTS, 0, 4);
+        shader.setMat4("projection", projection);
+        shader.setMat4("view", view);
+        shader.setMat4("model", model);
+
+        // draw model
+        backpack.Draw(shader);
+
+		//// Now we render the normals of the backpack
+		shaderNormals.use();
+        shaderNormals.setMat4("projection", projection);
+        shaderNormals.setMat4("view", view);
+        shaderNormals.setMat4("model", model);
+		shaderNormals.setMat3("normalMatrix", glm::mat3(view * glm::transpose(glm::inverse(model))));
+		backpack.Draw(shaderNormals);
+
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -144,8 +164,6 @@ int main()
     #pragma endregion
 
     #pragma region optional: de-allocate all resources 
-    glDeleteVertexArrays(1, &pointsVAO);
-    glDeleteBuffers(1, &pointsVBO);
 
     #pragma endregion
 

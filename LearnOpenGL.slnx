@@ -3,31 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/shaders/" />
-  <Folder Name="/shaders/cube/">
-    <File Path="LearnOpenGL/resources/shaders/cube/fShader.frag" />
-    <File Path="LearnOpenGL/resources/shaders/cube/vShader.vert" />
-  </Folder>
-  <Folder Name="/shaders/cubemapShader/">
-    <File Path="LearnOpenGL/resources/shaders/cubemapShader/fShader.frag" />
-    <File Path="LearnOpenGL/resources/shaders/cubemapShader/vShader.vert" />
-  </Folder>
-  <Folder Name="/shaders/fbShader/">
-    <File Path="LearnOpenGL/resources/shaders/fbShader/fShaderFBO.frag" />
-    <File Path="LearnOpenGL/resources/shaders/fbShader/vShaderFBO.vert" />
-  </Folder>
-  <Folder Name="/shaders/light/">
-    <File Path="LearnOpenGL/resources/shaders/light/fShaderLight.frag" />
-    <File Path="LearnOpenGL/resources/shaders/light/vShaderLight.vert" />
-  </Folder>
-  <Folder Name="/shaders/marble/">
-    <File Path="LearnOpenGL/resources/shaders/marble/fShaderMarble.frag" />
-    <File Path="LearnOpenGL/resources/shaders/marble/vShaderMarble.vert" />
-  </Folder>
-  <Folder Name="/shaders/reflective/" />
-  <Folder Name="/shaders/simple/">
-    <File Path="LearnOpenGL/resources/shaders/simple/fShader.frag" />
-    <File Path="LearnOpenGL/resources/shaders/simple/vShader.vert" />
-  </Folder>
   <Project Path="LearnOpenGL/LearnOpenGL.vcxproj" Id="2ad10402-e3e9-40c1-ae96-65507d090fcb" />
 </Solution>
