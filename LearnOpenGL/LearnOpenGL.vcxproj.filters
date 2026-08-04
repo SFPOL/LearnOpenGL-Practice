@@ -44,5 +44,8 @@
     <ClInclude Include="model.h">
       <Filter>Archivos de origen</Filter>
     </ClInclude>
+    <ClInclude Include="glslObjects.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
