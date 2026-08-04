@@ -48,15 +48,17 @@ float lastFrame = 0.0f;
 
 int main()
 {
-    #pragma region glfw: initialize and configure OpenGL
+#pragma region glfw: initialize and configure OpenGL
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    #pragma endregion
+    glfwWindowHint(GLFW_SAMPLES, 4);
 
-    #pragma region glfw window creation
+#pragma endregion
+
+#pragma region glfw window creation
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
@@ -72,36 +74,37 @@ int main()
     // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    #pragma endregion
+#pragma endregion
 
-    #pragma region glad: load all OpenGL function pointers
+#pragma region glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
 
-    #pragma endregion
+#pragma endregion
 
-    #pragma region Configure global opengl state
+#pragma region Configure global opengl state
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
+	glEnable(GL_MULTISAMPLE);
 
-    #pragma endregion
+#pragma endregion
 
-    #pragma region Build and compile shaders
+#pragma region Build and compile shaders
     Shader asteroidShader("resources/shaders/asteroid/vsAst.vert",
-                          "resources/shaders/asteroid/fsAst.frag");
+        "resources/shaders/asteroid/fsAst.frag");
 
-	Shader planetShader("resources/shaders/planet/vsPlt.vert",
-		                "resources/shaders/planet/fsPlt.frag");
+    Shader planetShader("resources/shaders/planet/vsPlt.vert",
+        "resources/shaders/planet/fsPlt.frag");
 
-    Shader skyboxShader("resources/shaders/cubemapShader/vsCubemap.vert", 
-                        "resources/shaders/cubemapShader/fsCubemap.frag");
-    #pragma endregion
+    Shader skyboxShader("resources/shaders/cubemapShader/vsCubemap.vert",
+        "resources/shaders/cubemapShader/fsCubemap.frag");
+#pragma endregion
 
-    #pragma region Vertex data and set up VAOs and VBOs
+#pragma region Vertex data and set up VAOs and VBOs
 
     float skyboxVertices[] = {
         // positions          
@@ -148,19 +151,19 @@ int main()
          1.0f, -1.0f,  1.0f
     };
 
-	VBO skyboxVBO(skyboxVertices, sizeof(skyboxVertices), { 3 }, 3);
-	VAO skyboxVAO;
-	skyboxVAO.addBuffer(skyboxVBO);
+    VBO skyboxVBO(skyboxVertices, sizeof(skyboxVertices), { 3 }, 3);
+    VAO skyboxVAO;
+    skyboxVAO.addBuffer(skyboxVBO);
 
     unsigned int amount = 1000;
     glm::mat4* modelMatrices;
     modelMatrices = new glm::mat4[amount];
     glm::vec3* base_displacement;
     base_displacement = new glm::vec3[amount];
-	float* base_scale;
-	base_scale = new float[amount]; 
-	float* base_rotAngle;
-	base_rotAngle = new float[amount];
+    float* base_scale;
+    base_scale = new float[amount];
+    float* base_rotAngle;
+    base_rotAngle = new float[amount];
     glm::vec3* base_rot_axis;
     base_rot_axis = new glm::vec3[amount];
     srand(glfwGetTime()); // initialize random seed	
@@ -177,7 +180,7 @@ int main()
         float y = displacement * 0.4f; // keep height of field smaller compared to width of x and z
         displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
         float z = displacement;
-		base_displacement[i] = glm::vec3(x, y, z);
+        base_displacement[i] = glm::vec3(x, y, z);
 
         // 2. scale: scale between 0.05 and 0.25f
         float scale = (rand() % 20) / 100.0f + 0.05;
@@ -187,22 +190,22 @@ int main()
         // 3. rotation: add random rotation around a (semi)randomly picked rotation axis vector
         float rotAngle = (rand() % 360);
         base_rotAngle[i] = rotAngle;
-        base_rot_axis[i] = glm::vec3((rand() % 1000)/1000.0f, (rand() % 1000)/1000.0f, (rand() % 1000)/1000.0f);
+        base_rot_axis[i] = glm::vec3((rand() % 1000) / 1000.0f, (rand() % 1000) / 1000.0f, (rand() % 1000) / 1000.0f);
         model = glm::rotate(model, rotAngle, base_rot_axis[i]);
     }
 
-    #pragma endregion
+#pragma endregion
 
-    # pragma Load models
-	Model rock("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/rock/rock.obj");
-	Model planet("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/planet/planet.obj");
-    # pragma endregion
+# pragma Load models
+    Model rock("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/rock/rock.obj");
+    Model planet("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/planet/planet.obj");
+# pragma endregion
 
-    #pragma region Set up Uniform Buffer Object (UBO)
+#pragma region Set up Uniform Buffer Object (UBO)
 
-    #pragma endregion
+#pragma endregion
 
-    #pragma region Load textures, set them up as uniforms
+#pragma region Load textures, set them up as uniforms
     unsigned int skyboxTexture = createCubemap("resources/textures/space/", vector<std::string>({
         "right.png",
         "left.png",
@@ -214,12 +217,39 @@ int main()
 
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
-    #pragma endregion
+#pragma endregion
 
-    #pragma region Other setup
-    #pragma endregion
-    
-    #pragma region render loop
+#pragma region Other setup
+    VBO buffer(modelMatrices, amount * sizeof(glm::mat4), { 4, 4, 4, 4 }, 16);
+
+    for (unsigned int i = 0; i < rock.meshes.size(); i++)
+    {
+        VAO* VAO = rock.meshes[i].VAO;
+        VAO->bind();
+        // vertex attributes
+        std::size_t vec4Size = sizeof(glm::vec4);
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(1 * vec4Size));
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
+
+        glVertexAttribDivisor(3, 1);
+        glVertexAttribDivisor(4, 1);
+        glVertexAttribDivisor(5, 1);
+        glVertexAttribDivisor(6, 1);
+
+        VAO->unbind();
+    }
+#pragma endregion
+
+    float startTime = static_cast<float>(glfwGetTime());
+    int frameCount = 0;
+
+#pragma region render loop
 
     while (!glfwWindowShouldClose(window))
     {
@@ -228,6 +258,12 @@ int main()
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        frameCount++;
+        if (currentFrame - startTime >= 1.0f) {
+            startTime = currentFrame;
+            std::cout << "\rFPS: " << frameCount << "" << std::flush;
+            frameCount = 0;
+        }
 
         // input
         // -----
@@ -239,47 +275,30 @@ int main()
         {
             glm::mat4 model = glm::mat4(1.0f);
             // 1. translation: displace along circle with 'radius' in range [-offset, offset]
-            float angle = (float)i / (float)amount * 360.0f + glfwGetTime()/10.0f;
+            float angle = (float)i / (float)amount * 360.0f + currentFrame / 10.0f;
             glm::vec3 displacement = base_displacement[i];
             displacement.x += sin(angle) * radius;
-			displacement.z += cos(angle) * radius;
-			model = glm::translate(glm::mat4(1.0f), displacement);
+            displacement.z += cos(angle) * radius;
+            model = glm::translate(glm::mat4(1.0f), displacement);
 
             // 2. scale: scale between 0.05 and 0.25f
             model = glm::scale(model, glm::vec3(base_scale[i]));
 
             // 3. rotation: add random rotation around a (semi)randomly picked rotation axis vector
-			float rotAngle = base_rotAngle[i] + glfwGetTime();
+            float rotAngle = base_rotAngle[i] + currentFrame;
             model = glm::rotate(model, rotAngle, base_rot_axis[i]);
 
             // 4. now add to list of matrices
             modelMatrices[i] = model;
         }
-        
-        VBO buffer(modelMatrices, amount * sizeof(glm::mat4), { 4, 4, 4, 4 }, 16);
 
-        for (unsigned int i = 0; i < rock.meshes.size(); i++)
-        {
-            VAO* VAO = rock.meshes[i].VAO;
-            VAO->bind();
-            // vertex attributes
-            std::size_t vec4Size = sizeof(glm::vec4);
-            glEnableVertexAttribArray(3);
-            glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
-            glEnableVertexAttribArray(4);
-            glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(1 * vec4Size));
-            glEnableVertexAttribArray(5);
-            glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
-            glEnableVertexAttribArray(6);
-            glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
-
-            glVertexAttribDivisor(3, 1);
-            glVertexAttribDivisor(4, 1);
-            glVertexAttribDivisor(5, 1);
-            glVertexAttribDivisor(6, 1);
-
-            VAO->unbind();
-        }
+        buffer.bind();
+        glBufferSubData(
+            GL_ARRAY_BUFFER,
+            0,
+            amount * sizeof(glm::mat4),
+            modelMatrices
+        );
 
         // render
         // ------
@@ -311,6 +330,7 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
         model = glm::scale(model, glm::vec3(3.0f, 3.0f, 3.0f));
+		model = glm::rotate(model, currentFrame / 5.0f, glm::vec3(0.0f, 1.0f, 0.0f));
         planetShader.setMat4("model", model);
         planet.Draw(planetShader);
 
@@ -326,8 +346,6 @@ int main()
             rock.meshes[i].VAO->unbind();
         }
 
-        buffer.del();
-
         skyboxShader.use();
         skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
         skyboxShader.setMat4("projection", projection);
@@ -342,10 +360,10 @@ int main()
         glfwPollEvents();
     }
 
-    #pragma endregion
+#pragma endregion
 
-    #pragma region optional: de-allocate all resources
-    #pragma endregion
+#pragma region optional: de-allocate all resources
+#pragma endregion
     skyboxVAO.del();
     skyboxVBO.del();
     glfwTerminate();
@@ -398,7 +416,7 @@ unsigned int createTexture(const std::string path) {
 }
 
 unsigned int createCubemap(std::string base_path, std::vector<std::string> faces_paths) {
-   
+
     unsigned int texture;
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(false); // tell stb_image.h to flip loaded texture's on the y-axis.
@@ -493,7 +511,7 @@ void setUpFBOTexture(unsigned int* FBO, unsigned int* texture, unsigned int widt
 
     glGenTextures(1, texture);
     glBindTexture(GL_TEXTURE_2D, *texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height , 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture, 0);
@@ -588,6 +606,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 
-	SCR_HEIGHT = height;
-	SCR_WIDTH = width;
+    SCR_HEIGHT = height;
+    SCR_WIDTH = width;
 }
