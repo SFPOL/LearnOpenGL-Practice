@@ -135,6 +135,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\Downloads\glad\src\glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cameraClass.h" />

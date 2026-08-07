@@ -41,6 +41,8 @@ Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = (float)SCR_WIDTH / 2.0;
 float lastY = (float)SCR_HEIGHT / 2.0;
 bool firstMouse = true;
+bool blinn = false;
+bool blinnKeyPressed = false;
 
 // timing
 float deltaTime = 0.0f;
@@ -94,111 +96,30 @@ int main()
 #pragma endregion
 
 #pragma region Build and compile shaders
-    Shader asteroidShader("resources/shaders/asteroid/vsAst.vert",
-        "resources/shaders/asteroid/fsAst.frag");
-
-    Shader planetShader("resources/shaders/planet/vsPlt.vert",
-        "resources/shaders/planet/fsPlt.frag");
-
-    Shader skyboxShader("resources/shaders/cubemapShader/vsCubemap.vert",
-        "resources/shaders/cubemapShader/fsCubemap.frag");
+    Shader shader("resources/shaders/ilumPlane/vsIlumPlane.vert", 
+                  "resources/shaders/ilumPlane/fsIlumPlane.frag");
 #pragma endregion
 
 #pragma region Vertex data and set up VAOs and VBOs
+    float planeVertices[] = {
+        // positions            // normals         // texcoords
+         10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
+        -10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+        -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
 
-    float skyboxVertices[] = {
-        // positions          
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
+         10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
+        -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
+         10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,  10.0f, 10.0f
     };
 
-    VBO skyboxVBO(skyboxVertices, sizeof(skyboxVertices), { 3 }, 3);
-    VAO skyboxVAO;
-    skyboxVAO.addBuffer(skyboxVBO);
-
-    unsigned int amount = 1000;
-    glm::mat4* modelMatrices;
-    modelMatrices = new glm::mat4[amount];
-    glm::vec3* base_displacement;
-    base_displacement = new glm::vec3[amount];
-    float* base_scale;
-    base_scale = new float[amount];
-    float* base_rotAngle;
-    base_rotAngle = new float[amount];
-    glm::vec3* base_rot_axis;
-    base_rot_axis = new glm::vec3[amount];
-    srand(glfwGetTime()); // initialize random seed	
-    float radius = 25.0;
-    float offset = 2.5f;
-    for (unsigned int i = 0; i < amount; i++)
-    {
-        glm::mat4 model = glm::mat4(1.0f);
-        // 1. translation: displace along circle with 'radius' in range [-offset, offset]
-        float angle = (float)i / (float)amount * 360.0f;
-        float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
-        float x = displacement;
-        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
-        float y = displacement * 0.4f; // keep height of field smaller compared to width of x and z
-        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
-        float z = displacement;
-        base_displacement[i] = glm::vec3(x, y, z);
-
-        // 2. scale: scale between 0.05 and 0.25f
-        float scale = (rand() % 20) / 100.0f + 0.05;
-        base_scale[i] = scale;
-        model = glm::scale(model, glm::vec3(scale));
-
-        // 3. rotation: add random rotation around a (semi)randomly picked rotation axis vector
-        float rotAngle = (rand() % 360);
-        base_rotAngle[i] = rotAngle;
-        base_rot_axis[i] = glm::vec3((rand() % 1000) / 1000.0f, (rand() % 1000) / 1000.0f, (rand() % 1000) / 1000.0f);
-        model = glm::rotate(model, rotAngle, base_rot_axis[i]);
-    }
+	VBO planeVBO(planeVertices, sizeof(planeVertices), {3, 3, 2}, 8);
+	VAO planeVAO;
+	planeVAO.addBuffer(planeVBO);
 
 #pragma endregion
 
 # pragma Load models
-    Model rock("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/rock/rock.obj");
-    Model planet("C:/Users/sfpol/OneDrive/Programes/OpenGLProject/LearnOpenGL/LearnOpenGL/resources/models/planet/planet.obj");
+
 # pragma endregion
 
 #pragma region Set up Uniform Buffer Object (UBO)
@@ -206,48 +127,30 @@ int main()
 #pragma endregion
 
 #pragma region Load textures, set them up as uniforms
-    unsigned int skyboxTexture = createCubemap("resources/textures/space/", vector<std::string>({
-        "right.png",
-        "left.png",
-        "top.png",
-        "bottom.png",
-        "front.png",
-        "back.png"
-        }));
+	Texture textureWood("resources/textures/wood.png");
 
-    skyboxShader.use();
-    skyboxShader.setInt("skybox", 0);
+    shader.use();
+	shader.setInt("texture_diffuse1", 0);
+
+    
+    shader.setVec3("pointLights[0].position", glm::vec3(0.0f, 0.0f, 0.0f));
+    shader.setVec3("pointLights[0].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+    shader.setVec3("pointLights[0].diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+    shader.setVec3("pointLights[0].specular", glm::vec3(1.0f, 1.0f, 1.0f));
+    shader.setFloat("pointLights[0].constant", 1.0f);
+    shader.setFloat("pointLights[0].linear", 0.09f);
+    shader.setFloat("pointLights[0].quadratic", 0.032f);
 #pragma endregion
 
 #pragma region Other setup
-    VBO buffer(modelMatrices, amount * sizeof(glm::mat4), { 4, 4, 4, 4 }, 16);
-
-    for (unsigned int i = 0; i < rock.meshes.size(); i++)
-    {
-        VAO* VAO = rock.meshes[i].VAO;
-        VAO->bind();
-        // vertex attributes
-        std::size_t vec4Size = sizeof(glm::vec4);
-        glEnableVertexAttribArray(3);
-        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)0);
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(1 * vec4Size));
-        glEnableVertexAttribArray(5);
-        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
-        glEnableVertexAttribArray(6);
-        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
-
-        glVertexAttribDivisor(3, 1);
-        glVertexAttribDivisor(4, 1);
-        glVertexAttribDivisor(5, 1);
-        glVertexAttribDivisor(6, 1);
-
-        VAO->unbind();
-    }
 #pragma endregion
+
+#pragma region FPS counter
 
     float startTime = static_cast<float>(glfwGetTime());
     int frameCount = 0;
+
+#pragma endregion
 
 #pragma region render loop
 
@@ -269,90 +172,35 @@ int main()
         // -----
         processInput(window);
 
+        // Global variables
+        // --------------------------------
 
-        // 
-        for (unsigned int i = 0; i < amount; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            // 1. translation: displace along circle with 'radius' in range [-offset, offset]
-            float angle = (float)i / (float)amount * 360.0f + currentFrame / 10.0f;
-            glm::vec3 displacement = base_displacement[i];
-            displacement.x += sin(angle) * radius;
-            displacement.z += cos(angle) * radius;
-            model = glm::translate(glm::mat4(1.0f), displacement);
-
-            // 2. scale: scale between 0.05 and 0.25f
-            model = glm::scale(model, glm::vec3(base_scale[i]));
-
-            // 3. rotation: add random rotation around a (semi)randomly picked rotation axis vector
-            float rotAngle = base_rotAngle[i] + currentFrame;
-            model = glm::rotate(model, rotAngle, base_rot_axis[i]);
-
-            // 4. now add to list of matrices
-            modelMatrices[i] = model;
-        }
-
-        buffer.bind();
-        glBufferSubData(
-            GL_ARRAY_BUFFER,
-            0,
-            amount * sizeof(glm::mat4),
-            modelMatrices
-        );
+        glm::mat4 view = camera.getLookAt();
+        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
+        glm::mat4 model = glm::mat4(1.0f);
 
         // render
         // ------
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Shader use
+        // --------------------
 
-        // configure transformation matrices
-        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
-        glm::mat4 view = camera.getLookAt();
-        asteroidShader.use();
-        asteroidShader.setMat4("projection", projection);
-        asteroidShader.setMat4("view", view);
-        asteroidShader.setVec3("viewPos", camera.cameraPos);
-        asteroidShader.setVec3("dirLight.direction", glm::vec3(-0.2f, -0.75f, -0.3f));
-        asteroidShader.setVec3("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        asteroidShader.setVec3("dirLight.diffuse", glm::vec3(0.9f, 0.9f, 0.9f));
-        asteroidShader.setVec3("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-        planetShader.use();
-        planetShader.setMat4("projection", projection);
-        planetShader.setMat4("view", view);
-        planetShader.setVec3("viewPos", camera.cameraPos);
-        planetShader.setVec3("dirLight.direction", glm::vec3(-0.2f, -0.75f, -0.3f));
-        planetShader.setVec3("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        planetShader.setVec3("dirLight.diffuse", glm::vec3(0.9f, 0.9f, 0.9f));
-        planetShader.setVec3("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+        shader.use();
+        planeVAO.bind();
+        textureWood.bind(0);
+        shader.setMat4("view", view);
+        shader.setMat4("projection", projection);
+        shader.setVec3("viewPos", camera.cameraPos);
 
-        // draw planet
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(3.0f, 3.0f, 3.0f));
-		model = glm::rotate(model, currentFrame / 5.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-        planetShader.setMat4("model", model);
-        planet.Draw(planetShader);
-
-        // draw meteorites
-        asteroidShader.use();
-        asteroidShader.setInt("texture_diffuse1", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, rock.textures_loaded[0].id); // note: we also made the textures_loaded vector public (instead of private) from the model class.
-        for (unsigned int i = 0; i < rock.meshes.size(); i++)
-        {
-            rock.meshes[i].VAO->bind();
-            glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(rock.meshes[i].indices.size()), GL_UNSIGNED_INT, 0, amount);
-            rock.meshes[i].VAO->unbind();
-        }
-
-        skyboxShader.use();
-        skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
-        skyboxShader.setMat4("projection", projection);
-        skyboxVAO.bind();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        //  Plane
+        model = glm::mat4(1.0f);
+        shader.setMat4("model", model);
+		shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
+		shader.setBool("blinn", blinn);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+       
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -364,56 +212,13 @@ int main()
 
 #pragma region optional: de-allocate all resources
 #pragma endregion
-    skyboxVAO.del();
-    skyboxVBO.del();
+    planeVAO.del();
+    planeVBO.del();
     glfwTerminate();
     return 0;
 }
 
 #pragma region Texture loading
-
-unsigned int createTexture(const std::string path) {
-
-    unsigned int texture;
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-    unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
-
-    if (data)
-    {
-        GLenum format = GL_RGB;
-        if (nrChannels == 1)
-            format = GL_RED;
-        else if (nrChannels == 4)
-            format = GL_RGBA;
-
-        // texture upload and mipmaps
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        if (format == GL_RGBA) {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        }
-        else {
-            // set the texture wrapping parameters
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        }
-        // set texture filtering parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // load image, create texture and generate mipmaps
-
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-    return texture;
-}
 
 unsigned int createCubemap(std::string base_path, std::vector<std::string> faces_paths) {
 
@@ -456,49 +261,6 @@ unsigned int createCubemap(std::string base_path, std::vector<std::string> faces
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return texture;
-}
-
-#pragma endregion
-
-#pragma region Setup basic objects
-
-void setUpVAO(unsigned int* VAO, vector<int> batches) {
-    glGenVertexArrays(1, VAO);
-
-    glBindVertexArray(*VAO);
-
-
-    unsigned int total_sum = 0;
-    for (unsigned int i = 0; i < batches.size(); i++) {
-        total_sum += abs(batches[i]);
-    }
-
-    unsigned int sum = 0;
-    unsigned int batch_num = 0;
-    for (unsigned int i = 0; i < batches.size(); i++) {
-        if (batches[i] < 0) {
-            sum -= batches[i];
-        }
-        else {
-            glVertexAttribPointer(batch_num, batches[i], GL_FLOAT, GL_FALSE, total_sum * sizeof(float), (void*)(sum * sizeof(float)));
-            glEnableVertexAttribArray(batch_num);
-            sum += batches[i];
-            batch_num++;
-        }
-
-    }
-}
-
-void setUpVBO(unsigned int* VBO, float* vertices, unsigned int sizeVertices) {
-    glGenBuffers(1, VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeVertices, vertices, GL_STATIC_DRAW);
-}
-
-void setUpEBO(unsigned int* EBO, unsigned int* indices, unsigned int sizeIndices) {
-    glGenBuffers(1, EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeIndices, indices, GL_STATIC_DRAW);
 }
 
 #pragma endregion
@@ -594,6 +356,16 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
     {
         camera.moveUpDown(-cameraSpeed);
+    }
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !blinnKeyPressed)
+    {
+        blinn = !blinn;
+        blinnKeyPressed = true;
+		cout << "\nBlinn-Phong: " << (blinn ? "ON" : "OFF") << endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+    {
+        blinnKeyPressed = false;
     }
 }
 

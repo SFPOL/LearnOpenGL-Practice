@@ -31,7 +31,7 @@ struct Vertex {
     float m_Weights[MAX_BONE_INFLUENCE];
 };
 
-struct Texture {
+struct TextureObj {
     unsigned int id;
     string type;
     string path;
@@ -42,13 +42,13 @@ public:
     // mesh Data
     vector<Vertex>       vertices;
     vector<unsigned int> indices;
-    vector<Texture>      textures;
+    vector<TextureObj>      textures;
     VAO* VAO = nullptr;
     VBO* VBO = nullptr;
     EBO* EBO = nullptr;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
+    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<TextureObj> textures)
     {
         this->vertices = vertices;
         this->indices = indices;
