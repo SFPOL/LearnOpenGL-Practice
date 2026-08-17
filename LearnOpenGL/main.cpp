@@ -25,12 +25,11 @@ unsigned int createCubemap(std::string base_path, std::vector<std::string> faces
 void setUpVAO(unsigned int* VAO, std::vector<int> batches);
 void setUpVBO(unsigned int* VBO, float* vertices, unsigned int sizeVertices);
 void setUpEBO(unsigned int* EBO, unsigned int* indices, unsigned int sizeIndices);
-void setUpFBOTexture(unsigned int* FBO, unsigned int* texture, unsigned int width, unsigned int height);
-void setUpRBO(unsigned int* RBO, unsigned int width, unsigned int height);
-void setUpFBOTextureAndRBO(unsigned int* FBO, unsigned int* texture, unsigned int* RBO, unsigned int width, unsigned int height);
+Texture setUpFBOTexture(unsigned int* FBO, unsigned int width, unsigned int height, GLenum format);
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void renderScene(Shader& shader, VAO& planeVAO, VAO& cubeVAO);
 
 // settings
 unsigned int SCR_WIDTH = 800;
@@ -55,8 +54,6 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    glfwWindowHint(GLFW_SAMPLES, 4);
 
 #pragma endregion
 
@@ -91,13 +88,18 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
-	glEnable(GL_MULTISAMPLE);
 
 #pragma endregion
 
 #pragma region Build and compile shaders
     Shader shader("resources/shaders/ilumPlane/vsIlumPlane.vert", 
                   "resources/shaders/ilumPlane/fsIlumPlane.frag");
+
+	Shader lightShader("resources/shaders/light/vsLight.vert",
+		               "resources/shaders/light/fsLight.frag");
+
+	Shader debugShader("resources/shaders/lightDebug/vsLightDeb.vert",
+		               "resources/shaders/lightDebug/fsLightDeb.frag");
 #pragma endregion
 
 #pragma region Vertex data and set up VAOs and VBOs
@@ -116,9 +118,79 @@ int main()
 	VAO planeVAO;
 	planeVAO.addBuffer(planeVBO);
 
+    float cubeVertices[] = {
+		// positions          // normals           // texture coords
+        // back face
+        -1.0f, -1.0f, -1.0f,  0.0f, 0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+        1.0f, 1.0f, -1.0f,    0.0f, 0.0f, -1.0f, 1.0f, 1.0f, // top-right
+        1.0f, -1.0f, -1.0f,   0.0f, 0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
+        1.0f, 1.0f, -1.0f,    0.0f, 0.0f, -1.0f, 1.0f, 1.0f, // top-right
+        -1.0f, -1.0f, -1.0f,  0.0f, 0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+        -1.0f, 1.0f, -1.0f,   0.0f, 0.0f, -1.0f, 0.0f, 1.0f, // top-left
+        // front face
+        -1.0f, -1.0f, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+        1.0f, -1.0f, 1.0f,    0.0f, 0.0f, 1.0f, 1.0f, 0.0f, // bottom-right
+        1.0f, 1.0f, 1.0f,     0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // top-right
+        1.0f, 1.0f, 1.0f,     0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // top-right
+        -1.0f, 1.0f, 1.0f,    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, // top-left
+        -1.0f, -1.0f, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+        // left face
+        -1.0f, 1.0f, 1.0f,   -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, // top-right
+        -1.0f, 1.0f, -1.0f,  -1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top-left
+        -1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-left
+        -1.0f, -1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-left
+        -1.0f, -1.0f, 1.0f,  -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // bottom-right
+        -1.0f, 1.0f, 1.0f,   -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, // top-right
+        // right face
+        1.0f, 1.0f, 1.0f,     1.0f, 0.0f, 0.0f, 1.0f, 0.0f, // top-left
+        1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-right
+        1.0f, 1.0f, -1.0f,    1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top-right         
+        1.0f, -1.0f, -1.0f,   1.0f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-right
+        1.0f, 1.0f, 1.0f,     1.0f, 0.0f, 0.0f, 1.0f, 0.0f, // top-left
+        1.0f, -1.0f, 1.0f,    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // bottom-left     
+        // bottom face
+        -1.0f, -1.0f, -1.0f,  0.0f, -1.0f, 0.0f, 0.0f, 1.0f, // top-right
+        1.0f, -1.0f, -1.0f,   0.0f, -1.0f, 0.0f, 1.0f, 1.0f, // top-left
+        1.0f, -1.0f, 1.0f,    0.0f, -1.0f, 0.0f, 1.0f, 0.0f, // bottom-left
+        1.0f, -1.0f, 1.0f,    0.0f, -1.0f, 0.0f, 1.0f, 0.0f, // bottom-left
+        -1.0f, -1.0f, 1.0f,   0.0f, -1.0f, 0.0f, 0.0f, 0.0f, // bottom-right
+        -1.0f, -1.0f, -1.0f,  0.0f, -1.0f, 0.0f, 0.0f, 1.0f, // top-right
+        // top face
+        -1.0f, 1.0f, -1.0f,   0.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top-left
+        1.0f, 1.0f, 1.0f,     0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom-right
+        1.0f, 1.0f, -1.0f,    0.0f, 1.0f, 0.0f, 1.0f, 1.0f, // top-right     
+        1.0f, 1.0f, 1.0f,     0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom-right
+        -1.0f, 1.0f, -1.0f,   0.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top-left
+        -1.0f, 1.0f, 1.0f,    0.0f, 1.0f, 0.0f, 0.0f, 0.0f  // bottom-left        
+    };
+
+    VBO cubeVBO(cubeVertices, sizeof(cubeVertices), { 3, 3, 2 }, 8);
+    VAO cubeVAO;
+    cubeVAO.addBuffer(cubeVBO);
+
+
+    float quadVertices[] = {
+        // positions        // texture Coords
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+    };
+
+	VBO quadVBO(quadVertices, sizeof(quadVertices), { 3, 2 }, 5);
+	VAO quadVAO;
+    quadVAO.addBuffer(quadVBO);
 #pragma endregion
 
 # pragma Load models
+
+# pragma endregion
+
+#pragma region Set up FBOs
+
+    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+    unsigned int depthMapFBO;
+	Texture depthMap = setUpFBOTexture(&depthMapFBO, SHADOW_WIDTH, SHADOW_HEIGHT, GL_DEPTH_COMPONENT);
 
 # pragma endregion
 
@@ -130,19 +202,15 @@ int main()
 	Texture textureWood("resources/textures/wood.png");
 
     shader.use();
-	shader.setInt("texture_diffuse1", 0);
-
-    
-    shader.setVec3("pointLights[0].position", glm::vec3(0.0f, 0.0f, 0.0f));
-    shader.setVec3("pointLights[0].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-    shader.setVec3("pointLights[0].diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
-    shader.setVec3("pointLights[0].specular", glm::vec3(1.0f, 1.0f, 1.0f));
-    shader.setFloat("pointLights[0].constant", 1.0f);
-    shader.setFloat("pointLights[0].linear", 0.09f);
-    shader.setFloat("pointLights[0].quadratic", 0.032f);
+	shader.setInt("diffuseTexture", 0);
+    shader.setInt("shadowMap", 1);
 #pragma endregion
 
 #pragma region Other setup
+    glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
+
+    debugShader.use();
+	debugShader.setInt("depthMap", 0); 
 #pragma endregion
 
 #pragma region FPS counter
@@ -175,33 +243,69 @@ int main()
         // Global variables
         // --------------------------------
 
-        glm::mat4 view = camera.getLookAt();
-        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
-        glm::mat4 model = glm::mat4(1.0f);
+        
 
         // render
         // ------
         glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Shader use
+        // Depth map rendering from light POV
+        // -----------------------------------          
+        
+        glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+        glm::mat4 lightProjection = glm::perspective(90.0f, 1.0f, 1.0f, 7.5f);
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+        lightShader.use();
+        lightShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);  // We set the viewport to the texture's size, so that 
+                                                        // openGL knows that we are rendering in this resolution
+
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO); // We bind the FBO
+
+		glClear(GL_DEPTH_BUFFER_BIT);                   // We clear the depth buffer of the FBO, so that we can 
+                                                        // render the scene from scratch
+
+		textureWood.bind(0);                            // We bind the texture, so that we can use it in the shader
+
+		renderScene(lightShader, planeVAO, cubeVAO);    // We render the scene from the light's POV
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);           // We unbind the FBO, so that we can render to the 
+                                                        // default framebuffer
+
+        // Basic shader use
         // --------------------
+        
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 view = camera.getLookAt();
+        glm::mat4 projection = camera.getPerspective((float)SCR_WIDTH / (float)SCR_HEIGHT);
 
         shader.use();
-        planeVAO.bind();
-        textureWood.bind(0);
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
         shader.setVec3("viewPos", camera.cameraPos);
 
-        //  Plane
-        model = glm::mat4(1.0f);
-        shader.setMat4("model", model);
-		shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
-		shader.setBool("blinn", blinn);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-       
+        shader.setVec3("lightPos", glm::vec3(-2.0f, 4.0f, -1.0f));
+        shader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+		 
+        textureWood.bind(0);
+		depthMap.bind(1);
+		renderScene(shader, planeVAO, cubeVAO);
 
+        /*glDisable(GL_DEPTH_TEST);
+
+        debugShader.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        quadVAO.bind();
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        glEnable(GL_DEPTH_TEST);*/
+       
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -211,12 +315,47 @@ int main()
 #pragma endregion
 
 #pragma region optional: de-allocate all resources
-#pragma endregion
     planeVAO.del();
     planeVBO.del();
+	cubeVAO.del();
+    cubeVBO.del();
+#pragma endregion
+
     glfwTerminate();
     return 0;
 }
+
+void renderScene(Shader& shader, VAO& planeVAO, VAO& cubeVAO) {
+    glm::mat4 model = glm::mat4(1.0f);
+    
+    //  Plane
+    planeVAO.bind();
+    shader.setMat4("model", model);
+    shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    //  Cubes
+	cubeVAO.bind();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+	shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(2.0f, 0.0f, 1.0));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+    shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 2.0));
+    model = glm::rotate(model, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
+    model = glm::scale(model, glm::vec3(0.25));
+    shader.setMat4("model", model);
+    shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
 
 #pragma region Texture loading
 
@@ -267,32 +406,28 @@ unsigned int createCubemap(std::string base_path, std::vector<std::string> faces
 
 #pragma region Setup FBO and RBO
 
-void setUpFBOTexture(unsigned int* FBO, unsigned int* texture, unsigned int width, unsigned int height) {
+Texture setUpFBOTexture(unsigned int* FBO, unsigned int width, unsigned int height, GLenum format) {
     glGenFramebuffers(1, FBO);
     glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
 
-    glGenTextures(1, texture);
-    glBindTexture(GL_TEXTURE_2D, *texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture, 0);
-}
+	Texture tex(width, height, format);
+	if (format == GL_DEPTH_COMPONENT) {
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, tex.ID, 0);
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+        return tex;
+	}
+    else if (format == GL_RGBA || format == GL_RGB) {
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex.ID, 0);
+        return tex;
+    }
 
-void setUpRBO(unsigned int* RBO, unsigned int width, unsigned int height) {
-    glGenRenderbuffers(1, RBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, *RBO);
-
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height); // use a single renderbuffer object for both a depth AND stencil buffer.
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *RBO); // now actually attach it
-}
-
-void setUpFBOTextureAndRBO(unsigned int* FBO, unsigned int* texture, unsigned int* RBO, unsigned int width, unsigned int height) {
-    setUpFBOTexture(FBO, texture, width, height);
-    setUpRBO(RBO, width, height);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    {
+        std::cout << "FBO ERROR: "
+            << glCheckFramebufferStatus(GL_FRAMEBUFFER)
+            << std::endl;
+    }
 }
 
 # pragma endregion

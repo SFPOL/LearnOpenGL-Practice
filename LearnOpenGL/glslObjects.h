@@ -164,6 +164,23 @@ public:
 		stbi_image_free(data);
 	}
 
+	// This instance is for the FBOs
+	// Here we are basicaly "reserving" the space for the FBO in form of a texture, but we are not uploading any data to it.
+	Texture(unsigned int width, unsigned int height, GLenum format = GL_DEPTH_COMPONENT) {
+		glGenTextures(1, &ID);
+		glBindTexture(GL_TEXTURE_2D, ID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format,
+			width, height, 0, format, GL_FLOAT, NULL);
+
+		// Base parameters. We can change it by binding then calling glTexParameteri. 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+	}
+
 	void bind(unsigned int unit) {
 		glActiveTexture(GL_TEXTURE0 + unit);
 		glBindTexture(GL_TEXTURE_2D, ID);

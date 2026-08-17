@@ -41,8 +41,12 @@ public:
 		return glm::lookAt(cameraPos, cameraTarget, cameraUp);
 	}
 
-	glm::mat4 getPerspective(float aspectRatio) {
-		return glm::perspective(glm::radians(FOV), aspectRatio, 0.1f, 100.0f);
+	glm::mat4 getPerspective(float aspectRatio, float near = 0.1f, float far = 100.0f) {
+		return glm::perspective(glm::radians(FOV), aspectRatio, near, far);
+	}
+
+	glm::mat4 getOrthographic(float left, float right, float bottom, float top, float near = 0.1f, float far = 100.0f) {
+		return glm::ortho(left, right, bottom, top, near, far);
 	}
 
 	void moveFrontBack(float delta) {
